@@ -1,3 +1,6 @@
+In its current state, this program is meant to be run on exactly two cores
+(i.e. coremask=0x3)
+
 Code is largely borrowed from the passthrough and traffic-gen examples
 included with the SDK.
 
