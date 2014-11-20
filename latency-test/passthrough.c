@@ -123,8 +123,6 @@ static void build_packet(char* packet, int port, int payload_size)
   /* Fill the payload of the packet with random bytes */
   while (ptr < end_ptr) *ptr++ = rand();
 
-  // Note: I'm ignoring the validate flag for this packet type
-
   return;
 }
 
@@ -263,9 +261,11 @@ int main(int argc, char *argv[])
   CORE_MASK_BARRIER_SYNC;
 
   if (IS_INIT_CORE) {
-    receive_packet();
+    // receive_packet();
+    receive_many_packets(10);
   } else {
-    send_packet();
+    // send_packet();
+    send_many_packets(10);
   }
 
   CORE_MASK_BARRIER_SYNC;
