@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <inttypes.h> 
 
 #include "cvmx.h"
 #include "cvmx-fpa.h"
@@ -6,6 +7,7 @@
 #include "cvmx-pko.h"
 
 #define CORE_MASK_BARRIER_SYNC cvmx_coremask_barrier_sync(&(sysinfo->core_mask))
+#define NUM_PACKET_BUFFERS 1024
 
 CVMX_SHARED uint64_t cpu_clock_hz;
 CVMX_SHARED uint64_t packet_pool;
@@ -31,6 +33,14 @@ void receive_packet()
   printf("Received packet!\n");
 }
 
+void print_debug_info()
+{
+  printf("Packet pool id: %" PRIu64 "\n", packet_pool);
+  printf("WQE    pool id: %" PRIu64 "\n", wqe_pool);
+  printf("Packet pool block size: %" PRIu64 "\n", cvmx_fpa_get_block_size(packet_pool));
+  printf("WQE    pool block size: %" PRIu64 "\n", cvmx_fpa_get_block_size(wqe_pool));
+}
+
 int main(int argc, char *argv[])
 {
   cvmx_sysinfo_t *sysinfo;
@@ -44,9 +54,17 @@ int main(int argc, char *argv[])
     /* may need to specify this manually for simulator */
     cpu_clock_hz = sysinfo->cpu_clock_hz;
 
+    /* allocate pools for packet and WQE pools and set up FPA hardware */
+    if (cvmx_helper_initialize_fpa(NUM_PACKET_BUFFERS, NUM_PACKET_BUFFERS, CVMX_PKO_MAX_OUTPUT_QUEUES * 4, 0, 0) == 0) {
+      printf("FPA initialization failed!\n");
+      exit(-1);
+    }
+
     /* get the FPA pool number of packet and WQE pools */
     packet_pool = cvmx_fpa_get_packet_pool();
     wqe_pool = cvmx_fpa_get_wqe_pool();
+
+    print_debug_info();
   }
 
   /* Wait (stall) until all cores in the given coremask have reached this
