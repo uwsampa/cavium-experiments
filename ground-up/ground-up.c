@@ -8,29 +8,121 @@
 
 #define CORE_MASK_BARRIER_SYNC cvmx_coremask_barrier_sync(&(sysinfo->core_mask))
 #define NUM_PACKET_BUFFERS 1024
+#define PAYLOAD_OFFSET 14
+#define PAYLOAD_SIZE 50
+#define PORT 2624
 
+CVMX_SHARED cvmx_sysinfo_t *sysinfo;
 CVMX_SHARED uint64_t cpu_clock_hz;
 CVMX_SHARED uint64_t packet_pool;
 CVMX_SHARED uint64_t wqe_pool;
 
+/**
+ * Convert an aray of 6 bytes to a uin64_t mac address
+ *
+ * @param buffer  Pointer to 6 bytes in network order
+ */
+static inline uint64_t get_mac(uint8_t *buffer)
+{
+    return (((uint64_t)buffer[0] << 40) |
+            ((uint64_t)buffer[1] << 32) |
+            ((uint64_t)buffer[2] << 24) |
+            ((uint64_t)buffer[3] << 16) |
+            ((uint64_t)buffer[4] << 8) |
+            ((uint64_t)buffer[5] << 0));
+}
+
+uint8_t * build_packet(uint8_t *buf, int port, int payload_size)
+{
+    int i;
+    uint8_t rand_num;
+    uint64_t src_mac, dest_mac;
+    
+    src_mac  = get_mac(sysinfo->mac_addr_base);
+    dest_mac = get_mac(sysinfo->mac_addr_base) + 1;
+
+    /* Ethernet dest address */
+    for (i = 0; i < 6; i++)
+      *buf++ = (dest_mac>>(40-i*8)) & 0xff;
+
+    /* Ethernet source address */
+    for (i = 0; i < 6; i++)
+      *buf++ = (src_mac>>(40-i*8)) & 0xff;
+
+    /* Ethernet Protocol */
+    *buf++ = 0x08; 
+    *buf++ = 0x00;
+
+    printf("Payload bytes sent: ");
+    /* Fill the payload of the packet with random bytes */
+    for (i = 0; i < payload_size; i++) {
+      rand_num = (uint8_t) rand();
+      *buf++ = rand_num;
+      printf("%x", rand_num);
+    }
+    printf("\n");
+
+    /* return pointer to the end of the packet */
+    return buf;
+}
+
 /* IN PROGRESS */
 void send_packet()
 {
+  uint8_t *buf, *pbuf; 
+  uint64_t queue;
+  cvmx_pko_command_word0_t pko_command;
+  cvmx_pko_return_value_t status;
+  cvmx_buf_ptr_t hw_buffer;
+
+  buf = (uint8_t *) cvmx_fpa_alloc(packet_pool);
+  pbuf = build_packet(buf, PORT, PAYLOAD_SIZE);
+
+  pko_command.u64 = 0;
+  pko_command.s.dontfree = 0;
+  pko_command.s.segs = 1;
+  pko_command.s.total_bytes = pbuf - buf;
+
+  queue = cvmx_pko_get_base_queue(PORT);
+
+  cvmx_pko_send_packet_prepare(PORT, queue, CVMX_PKO_LOCK_NONE);
+
+  hw_buffer.s.addr = cvmx_ptr_to_phys(buf);
+  hw_buffer.s.pool = packet_pool;
+  hw_buffer.s.i = 0;
+  hw_buffer.s.size = pbuf - buf;
+
+  // THROWS EXCEPTION HERE
+  status = cvmx_pko_send_packet_finish(PORT, queue, pko_command, hw_buffer, CVMX_PKO_LOCK_NONE);
+
+  if (status == CVMX_PKO_SUCCESS) {
+    printf("Succesfully sent packet!\n");
+    cvmx_fpa_free(buf, packet_pool, 0);
+  }
 }
 
 /* IN PROGRESS */
 void receive_packet()
 {
+  cvmx_wqe_t *work = NULL;
+  uint8_t *ptr;
+  int i;
+
   printf("Waiting for packet...\n");
 
-  cvmx_wqe_t *work = NULL;
   while (!work) {
     /* In standalone CVMX, we have nothing to do if there isn't work,
      * so use the WAIT flag to reduce power usage. */
-    cvmx_wqe_t *work = cvmx_pow_work_request_sync(CVMX_POW_WAIT);
+    work = cvmx_pow_work_request_sync(CVMX_POW_WAIT);
   }
 
-  printf("Received packet!\n");
+  ptr = (uint8_t *) cvmx_phys_to_ptr(work->packet_ptr.s.addr);
+  ptr += PAYLOAD_OFFSET;
+
+  printf("Payload bytes recv: ");
+  for (i = 0; i < PAYLOAD_SIZE; i++) {
+    printf("%x", *(ptr++));
+  }
 }
 
 void print_debug_info()
@@ -41,10 +133,21 @@ void print_debug_info()
   printf("WQE    pool block size: %" PRIu64 "\n", cvmx_fpa_get_block_size(wqe_pool));
 }
 
+int init_tasks(int num_packet_buffers)
+{
+  /* allocate pools for packet and WQE pools and set up FPA hardware */
+  if (cvmx_helper_initialize_fpa(num_packet_buffers, num_packet_buffers, CVMX_PKO_MAX_OUTPUT_QUEUES * 4, 0, 0))
+    return -1;
+
+  if (cvmx_helper_initialize_sso(num_packet_buffers))
+    return -1;
+
+  return cvmx_helper_initialize_packet_io_global();
+}
+
+
 int main(int argc, char *argv[])
 {
-  cvmx_sysinfo_t *sysinfo;
-
   /* mandatory function to initialize simple executive application */
   cvmx_user_app_init();
 
@@ -54,9 +157,8 @@ int main(int argc, char *argv[])
     /* may need to specify this manually for simulator */
     cpu_clock_hz = sysinfo->cpu_clock_hz;
 
-    /* allocate pools for packet and WQE pools and set up FPA hardware */
-    if (cvmx_helper_initialize_fpa(NUM_PACKET_BUFFERS, NUM_PACKET_BUFFERS, CVMX_PKO_MAX_OUTPUT_QUEUES * 4, 0, 0) == 0) {
-      printf("FPA initialization failed!\n");
+    if(init_tasks(NUM_PACKET_BUFFERS) != 0) {
+      printf("Initialization failed!\n");
       exit(-1);
     }
 
