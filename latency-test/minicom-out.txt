@@ -1,0 +1,82 @@
+
+Looking for valid bootloader image....
+Jumping to start of image at address 0xbfd10000
+
+
+U-Boot 2013.07 ( (U-BOOT build: 96, SDK version: 3.1.0-p3-528), svnversion: u-boot:100749M, exec:)-svn100731 (Build time: Jun 27 2014 - 19:07:26)
+
+Skipping PCIe port 0 BIST, in EP mode, can't tell if clocked.
+Skipping PCIe port 1 BIST, reset not done. (port not configured)
+BIST check passed.
+MCU rev: 1.26, CPU voltage: 1.106 DDR{0,1} voltages: 1.496,1.500
+Channel  8     Core VDD: 1.106V
+Channel  7    DDR0 1.5V: 1.496V
+Channel  6    DDR1 1.5V: 1.500V
+EBB6800 board revision major:2, minor:0, serial #: 2013-2.0-00468
+OCTEON CN6880-AAP pass 2.2, Core clock: 1200 MHz, IO clock: 800 MHz, DDR clock: 667 MHz (1334 Mhz DDR)
+Base DRAM address used by u-boot: 0x20f000000, size: 0x1000000
+DRAM: 8 GiB
+Clearing DRAM...... done
+NAND:  4096 MiB
+Registered IDE device 0 from IDE bus:dev 0:0
+Flash: 8 MiB
+PCIe: Port 0 in endpoint mode.
+PCIe: Port 1 is unknown, skipping.
+PCI console init succeeded, 1 consoles, 1024 bytes each
+Net:   octmgmt0, octeth0
+Bus 0: OK 
+  Device 0: Model: CF 4GB Firm: 20101001 Ser#: 20090410    300006DD
+            Type: Hard Disk
+            Capacity: 3831.6 MB = 3.7 GB (7847280 x 512)
+USB0:   USB EHCI 1.00
+scanning bus 0 for devices... 1 USB Device(s) found
+Type the command 'usb start' to scan for USB storage devices.
+
+Octeon ebb6800# setenv filesize 0x54caca
+Octeon ebb6800# setenv fileaddr 0x20000000
+Octeon ebb6800# bootoct 0 coremask=0x3
+Bootloader: Done loading app on coremask: 0x3
+PP0:~CONSOLE-> Using device tree
+PP0:~CONSOLE-> Interface 2 has 1 ports (XAUI)
+PP0:~CONSOLE-> Interface 7 has 32 ports (NPI)
+PP0:~CONSOLE-> Interface 8 has 8 ports (LOOP)
+PP0:~CONSOLE-> Packet pool id: 0
+PP0:~CONSOLE-> WQE    pool id: 1
+PP0:~CONSOLE-> Packet pool block size: 2048
+PP0:~CONSOLE-> WQE    pool block size: 128
+PP0:~CONSOLE-> Waiting for packet...
+PP1:~CONSOLE-> Payload bytes sent: 2dcf46294b478d868a7ff3f2bf1fcd97a9692ca5577464c4af1528a4e957db5e20fb38a84ea6149325562444df598d437b
+Core file is ready to dump
+Core 1: Unhandled Exception. Cause register decodes to:
+tlb load/fetch
+******************************************************************
+ r0 ($00): 0x0000000000000000 	  s0 ($16): 0x80000000003cb800
+ at ($01): 0xffffffffffbfffff 	  s1 ($17): 0x0000000014020000
+ v0 ($02): 0x0000000000000000 	  s2 ($18): 0x00004000003cb800
+ v1 ($03): 0x0000000000000300 	  s3 ($19): 0x0000000000000000
+ a0 ($04): 0x0000000000000000 	  s4 ($20): 0x0000000000010040
+ a1 ($05): 0x000000000000000a 	  s5 ($21): 0x000000001414cf00
+ a2 ($06): 0x0000000000000077 	  s6 ($22): 0x0000000014150000
+ a3 ($07): 0x0000000000000077 	  s7 ($23): 0x0000000000003000
+ t0 ($08): 0x000000000000000a 	  t8 ($24): 0x0000000014020000
+ t1 ($09): 0x0a0a0a0a0a0a0a0a 	  t9 ($25): 0x0000000014019bb0
+ t2 ($10): 0x0000000000000000 	  k0 ($26): 0x000000001010ae70
+ t3 ($11): 0x63766d785f636f00 	  k1 ($27): 0xffffffff80001090
+ t4 ($12): 0x8001070100295000 	  gp ($28): 0x0000000012018430
+ t5 ($13): 0x0000000014019ab0 	  sp ($29): 0x00000000160fff90
+ t6 ($14): 0x0000000000000100 	  s8 ($30): 0x00000000003cb800
+ t7 ($15): 0x000000001414cdf0 	  ra ($31): 0x0000000010000ebc
+      COP0_CAUSE: 0x0000000040008008
+     COP0_STATUS: 0x00000000501004e3
+   COP0_BADVADDR: 0x0000000000003008
+        COP0_EPC: 0x0000000010000ef4
+******************************************************************
+Backtrace:
+
+  #0  0x10109298
+  #1  0x101099a8
+  #2  0x1010b08c
+  #3  0x10000ef4
+  #4  0x100006b8
+  #5  0x10000a30
+******************************************************************
