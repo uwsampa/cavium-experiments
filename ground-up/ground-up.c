@@ -8,7 +8,7 @@
 
 #define CORE_MASK_BARRIER_SYNC cvmx_coremask_barrier_sync(&(sysinfo->core_mask))
 #define NUM_PACKET_BUFFERS 1024
-#define PAYLOAD_OFFSET 14
+#define PAYLOAD_OFFSET 14 // offset into Ethernet packet to reach payload
 #define PAYLOAD_SIZE 50
 #define PORT 2624
 
@@ -32,7 +32,16 @@ static inline uint64_t get_mac(uint8_t *buffer)
             ((uint64_t)buffer[5] << 0));
 }
 
-uint8_t * build_packet(uint8_t *buf, int port, int payload_size)
+/**
+ * Fill the given buffer with an Ethernet packet whose payload is filled
+ * with enough random bytes to reach the given payload size.
+ *
+ * @param buf           Destination buffer to which to write the packet
+ * @param payload_size  Size of the packet payload (in bytes)
+ *
+ * @return pointer to the first byte past the end of the packet 
+ */
+uint8_t * build_packet(uint8_t *buf, int payload_size)
 {
     int i;
     uint8_t rand_num;
@@ -76,21 +85,20 @@ void send_packet()
   cvmx_buf_ptr_t hw_buffer;
 
   buf = (uint8_t *) cvmx_fpa_alloc(packet_pool);
-  pbuf = build_packet(buf, PORT, PAYLOAD_SIZE);
+  pbuf = build_packet(buf, PAYLOAD_SIZE);
 
   pko_command.u64 = 0;
-  pko_command.s.dontfree = 0;
   pko_command.s.segs = 1;
   pko_command.s.total_bytes = pbuf - buf;
-
-  queue = cvmx_pko_get_base_queue(PORT);
-
-  cvmx_pko_send_packet_prepare(PORT, queue, CVMX_PKO_LOCK_NONE);
 
   hw_buffer.s.addr = cvmx_ptr_to_phys(buf);
   hw_buffer.s.pool = packet_pool;
   hw_buffer.s.i = 0;
   hw_buffer.s.size = pbuf - buf;
+
+  queue = cvmx_pko_get_base_queue(PORT);
+
+  cvmx_pko_send_packet_prepare(PORT, queue, CVMX_PKO_LOCK_NONE);
 
   // THROWS EXCEPTION HERE
   status = cvmx_pko_send_packet_finish(PORT, queue, pko_command, hw_buffer, CVMX_PKO_LOCK_NONE);
@@ -119,6 +127,7 @@ void receive_packet()
   ptr = (uint8_t *) cvmx_phys_to_ptr(work->packet_ptr.s.addr);
   ptr += PAYLOAD_OFFSET;
 
+  // print out the payload bytes of the recieved packet
   printf("Payload bytes recv: ");
   for (i = 0; i < PAYLOAD_SIZE; i++) {
     printf("%x", *(ptr++));
@@ -142,9 +151,10 @@ int init_tasks(int num_packet_buffers)
   if (cvmx_helper_initialize_sso(num_packet_buffers))
     return -1;
 
+  cvmx_pko_initialize_global();
+
   return cvmx_helper_initialize_packet_io_global();
 }
-
 
 int main(int argc, char *argv[])
 {
