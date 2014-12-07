@@ -1,3 +1,5 @@
+Author: Teddy Brow
+
 This folder contains the results for my bandwidth testing of the CN6800
 evaluation board.
 
