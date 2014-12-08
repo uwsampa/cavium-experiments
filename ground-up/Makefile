@@ -15,7 +15,7 @@ include $(dir)/cvmx.mk
 #  application specification
 TARGET = ground-up$(PREFIX)
 OBJS = $(OBJ_DIR)/ground-up.o
-CFLAGS_LOCAL = -g -O2 -W -Wall -Wno-unused-parameter
+CFLAGS_LOCAL = -g -O0 -W -Wall -Wno-unused-parameter
 $(OBJ_DIR)/ground-up.o: ground-up.c
 	${COMPILE}
 include $(OCTEON_ROOT)/application.mk
