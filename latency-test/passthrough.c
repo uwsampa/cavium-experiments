@@ -143,14 +143,17 @@ void receive_packet()
 
 void receive_many_packets(int how_many)
 {
-  int recv_cnt;
+  int recv_cnt = 0;
   uint64_t packet_rec_clk_cnt, diff;
   cvmx_wqe_t *work;
 
   while (recv_cnt < how_many)
   {
     work = cvmx_pow_work_request_sync(CVMX_POW_NO_WAIT);
-    if (work) recv_cnt++;
+    if (work) {
+      // printf("Receivied a packet!\n");
+      recv_cnt++;
+    }
     // TODO - Do I need to free anything here? How to "dispose of" received packet?
   }
 
@@ -261,10 +264,10 @@ int main(int argc, char *argv[])
   CORE_MASK_BARRIER_SYNC;
 
   if (IS_INIT_CORE) {
-    // receive_packet();
+    //receive_packet();
     receive_many_packets(10);
   } else {
-    // send_packet();
+    //send_packet();
     send_many_packets(10);
   }
 
